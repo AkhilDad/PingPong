@@ -11,72 +11,64 @@ public class Game {
     private Player mFirstPlayer;
     private Player mSecondPlayer;
 	private int mRandom;
+	private Player mCurrentPlayer;
 
 
     public Game(Player player1, Player player2) {
         mFirstPlayer = player1;
         mSecondPlayer = player2;
+        mCurrentPlayer = player1;
     }
 
-    public Player startPlay() {
-//        while(isGameOver()) {
-            handleOneChance(mFirstPlayer, mSecondPlayer);
-//        }
-        return isPlayerWon(mFirstPlayer) ? mFirstPlayer : mSecondPlayer;
+    public void startPlay() {
+    	mFirstPlayer.startPlaying(this);
+    	mSecondPlayer.startPlaying(this);
     }
 
     private boolean isPlayerWon(Player player) {
         return player.getScore() == MAX_SCORE;
     }
 
-    private void handleOneChance(Player firstPlayer, Player secondPlayer) {
-    	mFirstPlayer = firstPlayer;
-    	mSecondPlayer = secondPlayer;
-        firstPlayer.notify();
-    }
 
     public boolean isGameOver() {
-        return mFirstPlayer.getScore() == MAX_SCORE || mSecondPlayer.getScore() == MAX_SCORE;
+        return isPlayerWon(mFirstPlayer) || isPlayerWon(mSecondPlayer) ;
     }
     
-    public synchronized void setRandom(int random) {
-            try {
-                mFirstPlayer.wait();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+    public void setRandom(int random) {
+    	synchronized (this) {
         mRandom = random;
-        mSecondPlayer.notify();
-        System.out.println(random);
-        notify();
+        System.out.println("setRandom"+mCurrentPlayer.getPlayerName()+"--->"+random);
+        mCurrentPlayer = (mSecondPlayer.isFistPlayer() ? mFirstPlayer : mSecondPlayer);
+        this.notifyAll();
+    	}
     }
 
-    public synchronized void setDefenceSet(List<Integer> defenceSet) {
-    	try {
-    		mSecondPlayer.wait();
-    	} catch (InterruptedException e) {
-    		e.printStackTrace();
-    	}
+    public void setDefenceSet(List<Integer> defenceSet) {
+    	synchronized (this) {
+    		System.out.println(mCurrentPlayer.getPlayerName()+"--->"+defenceSet.toString());
     	if (defenceSet.contains(mRandom)) {
     		mFirstPlayer.increaseScore();
     		mFirstPlayer.setIsFistPlayer(true);
     		mSecondPlayer.setIsFistPlayer(false);
+    		mCurrentPlayer = mFirstPlayer;
     	} else {
     		mSecondPlayer.increaseScore();
     		mFirstPlayer.setIsFistPlayer(false);
     		mSecondPlayer.setIsFistPlayer(true);
+    		mCurrentPlayer = mSecondPlayer;
     	}
-    	//notify referee that this game is complete
+    	System.out.println(mFirstPlayer.getPlayerName()+"----Scores --->"+mFirstPlayer.getScore());
+    	System.out.println(mSecondPlayer.getPlayerName()+"----Scores --->"+mSecondPlayer.getScore());
+    	System.out.println("First Player"+mCurrentPlayer.getPlayerName());
+    	this.notifyAll();
+    	}
     }
 
-    
+	public Player getCurrentPlayer() {
+		return mCurrentPlayer;
+	}
 
-	private Player checkForWin() {
-		if (isGameOver()) {
-			return isPlayerWon(mFirstPlayer) ? mFirstPlayer : mSecondPlayer;
-		} else {
-			return null;
-		}
-		
+	public Player getWinner() {
+		return isPlayerWon(mFirstPlayer) ? mFirstPlayer : mSecondPlayer;
 	}
 }
